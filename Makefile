@@ -1,8 +1,20 @@
 # Makefile for building wasm c algorithms
-CC=emcc
-EFLAGS = -s WASM=1 -s EXPORTED_RUNTIME_METHODS='["ccall", "cwrap"]' --pre-js preamble.js --post-js postamble.js
-CFLAGS = -DNDEBUG -g -Wall $(EFLAGS)
+
+ifneq ($(DEBUG),1)
+  CC=emcc
+  EFLAGS = -s WASM=1 -s EXPORTED_RUNTIME_METHODS='["ccall", "cwrap"]' --pre-js preamble.js --post-js postamble.js
+  CFLAGS = -DDEBUG -g -Wall $(EFLAGS)
+  EXECUTABLE = out/rshape.js
+else
+  CC=gcc
+  CFLAGS = -DDEBUG -g -Wall -fsanitize=address
+  EXECUTABLE = out/rshape
+endif
+
 LDLIBS= -lm
+
+
+
 DEPDIR := deps
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
 
@@ -11,8 +23,8 @@ RM := rm -f
 SRCS := utils.c rshape.c ADTlinkedlist.c ADTarraylist.c
 
 #TODO add postamble.js preamble.js pre reqs
-rshape.js: utils.o rshape.o ADTlinkedlist.o ADTarraylist.o
-	$(CC) $(LDLIBS) $(CFLAGS) $^ -o out/rshape.js
+$(EXECUTABLE): utils.o rshape.o ADTlinkedlist.o ADTarraylist.o
+	$(CC) $(LDLIBS) $(CFLAGS) $^ -o $(EXECUTABLE)
 
 %.o : %.c
 %.o: %.c $(DEPDIR)/%.d | $(DEPDIR)
@@ -24,8 +36,9 @@ $(DEPDIR):
 clean:
 	$(RM) *.o *.gch rshape deps/*
 
-debug:
-	$(MAKE) CFLAGS='-Wextra -pedantic-errors -fsanitize=address -Wall -g -DDEBUG'
+# cleans out wasm build and generates local program
+debug: clean
+	$(MAKE) DEBUG=1
 
 DEPFILES := $(SRCS:%.c=$(DEPDIR)/%.d)
 
